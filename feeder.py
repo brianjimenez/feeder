@@ -24,14 +24,37 @@ def timing(f):
         return ret, (time2 - time1) * 1000.0
     return wrap
 
-@timing
+
 def get_data_from_feed(feed_source):
     """Gets the feed"""
     return feedparser.parse(feed_source)
 
 
-if __name__ == "__main__":
+@timing
+def synchronous():
     data = {}
     for feed_name, feed_source in feed_sources.iteritems():
-        data[feed_name], t = get_data_from_feed(feed_source)
-        print t, data[feed_name]['feed']['title']
+        data[feed_name] = get_data_from_feed(feed_source)
+    return data
+
+
+@timing
+def asynchronous():
+    data = {}
+    threads = []
+    for feed_name, feed_source in feed_sources.iteritems():
+        threads.append(gevent.spawn(get_data_from_feed, feed_source))
+        data[feed_name] = threads[-1].value
+    gevent.joinall(threads)
+    return data
+
+
+
+if __name__ == "__main__":
+    print('Synchronous:')
+    data, t = synchronous()
+    print t
+
+    print('Asynchronous:')
+    data, t = asynchronous()
+    print t
